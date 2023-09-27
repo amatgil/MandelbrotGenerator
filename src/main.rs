@@ -1,15 +1,15 @@
 pub mod utils;
 pub mod structs;
 
-use std::{error::Error, sync::mpsc::{self, Receiver}, thread, collections::{BinaryHeap}, cmp::Reverse, io::{BufWriter, Write}, fs::File};
+use std::{error::Error, sync::mpsc::{self, Receiver}, thread, collections::BinaryHeap, cmp::Reverse, io::BufWriter, fs::File};
+use std::io::Write;
+
 use rayon::prelude::*;
-
 use structs::{Imatge, Color, Complex};
-//use utils::guardar_pixels;
 
-use crate::structs::Pixel;
+use crate::{structs::Pixel, utils::guardar_pixels};
 
-const IMATGE_WIDTH: usize = 100000;
+const IMATGE_WIDTH: usize = 1000;
 const IMATGE_HEIGHT: usize = IMATGE_WIDTH;
 
 const ITERACIONS_MAX: usize = 50;
@@ -25,62 +25,65 @@ fn main() -> Result<(), Box<dyn Error>> {
     let pixels = vec!(Pixel::default(); IMATGE_WIDTH * IMATGE_HEIGHT);
     let mut img = Imatge::new(IMATGE_WIDTH, IMATGE_HEIGHT, pixels);
 
+    guardar_pixels(img.clone());
+
     println!("Calculant...");
-    
 
     let (sender, reciever) = mpsc::channel::<Pixel>();
 
     // Generar i enviar
-    thread::spawn(move || {
+    let t1 = thread::spawn(move || {
         img.pixels_mut().par_iter_mut().enumerate().for_each(|(i, p)| p.calcular(i, sender.clone()));
     });
 
     // Rebre i guardar
-    thread::spawn(|| {
+    let t2 = thread::spawn(|| {
         rebre_pixels_i_escriure_a_disk(reciever);
     });
     
+    t1.join().unwrap();
+    t2.join().unwrap();
 
-    println!("Guardant a disc...");
-    //guardar_pixels(img)?;
 
-    println!("Acabat!");
     Ok(())
 }
 
 fn rebre_pixels_i_escriure_a_disk(receiver: Receiver<Pixel>) {
-    let mut next = 0;
     let mut b_heap: BinaryHeap<Reverse<Pixel>> = BinaryHeap::new();
     let file = File::create("sortida.ppm").expect("No s'ha pogut obrir 'sortida.ppm'");
     let mut buffer = BufWriter::new(file);
+    let mut next = 0;
+
     
     // ppm spec
     writeln!(buffer, "P3").unwrap();
     writeln!(buffer, "{} {}", IMATGE_WIDTH, IMATGE_HEIGHT).unwrap();
     writeln!(buffer, "255").unwrap();
 
-    while let Ok(pixel_rebut) = receiver.recv() {
-        let index = pixel_rebut.index;
-        if next != index {
-            b_heap.push(Reverse(pixel_rebut));
-            continue;
+    while (next < IMATGE_WIDTH * IMATGE_HEIGHT) { 
+        print!("Next: {next}");
+        if let Ok(pixel_rebut) = receiver.recv() { // Err means sender hung up, we don't care
+            println!("; ok: true");
+            let index = pixel_rebut.index;
+            if next != index {
+                b_heap.push(Reverse(pixel_rebut));
+                continue;
+            }
+            writeln!(buffer, "{}", pixel_rebut).unwrap();
+            next += 1;
         }
 
-        // El pixel que tenim és el que toca escriure
-        writeln!(buffer, "{}", pixel_rebut).unwrap();
-
-        next += 1;
-        
         while let Some(Reverse(peek)) = b_heap.peek() {
-            if peek.index != next {
-                break;
-            }
+            if peek.index != next { break; }
 
-            // El pixel que hem trobat és el que toca escriure
             writeln!(buffer, "{}", peek).unwrap();
+            b_heap.pop();
             next += 1;
         }
     }
+
+    dbg!(b_heap.len());
+    dbg!(b_heap.peek());
 }
 
 fn mandel_equation(x: usize, y: usize) -> bool {

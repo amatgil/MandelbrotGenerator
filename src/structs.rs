@@ -1,7 +1,8 @@
-use std::{fmt::Display, ops::{Add, Mul}, sync::mpsc::{Receiver, Sender}, cmp::Ordering};
+use std::{fmt::Display, ops::{Add, Mul}, sync::mpsc::Sender, cmp::Ordering};
 
 use crate::{utils::{coords_to_idx, idx_to_coords}, IMATGE_WIDTH, mandel_equation, COLOR_DINS, COLOR_FORA, COLOR_NO_CALCULAT};
 
+#[derive(Clone)]
 pub struct Imatge {
     width: usize,
     height: usize,
@@ -17,14 +18,14 @@ impl Imatge {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Estat {
     Dins,
     Fora,
     NoCalculat
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Pixel {
     estat: Estat,
     pub index: usize,
@@ -47,11 +48,7 @@ impl Color {
     pub const fn new(r: u8, g: u8, b: u8) -> Self {
         Self { r, g, b }
     }
-    pub fn calcular(&mut self, idx: usize) {
-        let (x, y) = idx_to_coords(idx, IMATGE_WIDTH);
-        if mandel_equation(x, y) { *self = COLOR_DINS; }
-        else {*self = COLOR_FORA;}
-    }
+
 }
 impl Default for Color {
     fn default() -> Self {
@@ -62,6 +59,7 @@ impl Default for Color {
 impl Pixel {
     pub fn calcular(&mut self, idx: usize, sender: Sender<Pixel>) {
         self.index = idx;
+
         let (x, y) = idx_to_coords(idx, IMATGE_WIDTH);
         if mandel_equation(x, y) { self.estat = Estat::Dins; }
         else { self.estat = Estat::Fora;}
@@ -80,6 +78,7 @@ impl PartialOrd for Pixel {
         self.index.partial_cmp(&other.index)
     }
 }
+
 impl Eq for Pixel {}
 
 impl Ord for Pixel {
@@ -89,7 +88,7 @@ impl Ord for Pixel {
 }
 
 
-/// Aquí és on s'especifica com es generarà el ppm a partir d'un `Pixels`
+/// Aquí és on s'especifica com es generarà el ppm a partir d'un `Pixels` si se fa de cop
 impl Display for Imatge { 
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut out = String::new();
