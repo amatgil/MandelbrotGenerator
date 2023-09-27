@@ -1,4 +1,4 @@
-use std::{fmt::Display, ops::{Add, Mul}};
+use std::{fmt::Display, ops::{Add, Mul}, sync::mpsc::{Receiver, Sender}, cmp::Ordering};
 
 use crate::{utils::{coords_to_idx, idx_to_coords}, IMATGE_WIDTH, mandel_equation, COLOR_DINS, COLOR_FORA, COLOR_NO_CALCULAT};
 
@@ -27,12 +27,12 @@ pub enum Estat {
 #[derive(Clone, Copy)]
 pub struct Pixel {
     estat: Estat,
-    index: Option<usize>,
+    pub index: usize,
 }
 
 impl Default for Pixel {
     fn default() -> Self {
-        Self { estat: Estat::NoCalculat, index: None }
+        Self { estat: Estat::NoCalculat, index: 10000000 }
     }
 }
 
@@ -60,11 +60,31 @@ impl Default for Color {
 }
 
 impl Pixel {
-    pub fn calcular(&mut self, idx: usize) {
-        self.index = Some(idx);
+    pub fn calcular(&mut self, idx: usize, sender: Sender<Pixel>) {
+        self.index = idx;
         let (x, y) = idx_to_coords(idx, IMATGE_WIDTH);
         if mandel_equation(x, y) { self.estat = Estat::Dins; }
         else { self.estat = Estat::Fora;}
+
+        sender.send(*self).expect("No s'ha pogut enviar el pixel al buffer");
+    }
+}
+
+impl PartialEq for Pixel {
+    fn eq(&self, other: &Self) -> bool {
+        self.index == other.index
+    }
+}
+impl PartialOrd for Pixel {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.index.partial_cmp(&other.index)
+    }
+}
+impl Eq for Pixel {}
+
+impl Ord for Pixel {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.index.cmp(&other.index)
     }
 }
 
