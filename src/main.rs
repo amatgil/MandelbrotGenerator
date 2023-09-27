@@ -9,7 +9,7 @@ use structs::{Imatge, Color, Complex};
 
 use crate::{structs::Pixel, utils::guardar_pixels};
 
-const IMATGE_WIDTH: usize = 1000;
+const IMATGE_WIDTH: usize = 10000;
 const IMATGE_HEIGHT: usize = IMATGE_WIDTH;
 
 const ITERACIONS_MAX: usize = 50;
@@ -24,8 +24,6 @@ const COLOR_NO_CALCULAT: Color = Color::new(255, 255, 255);
 fn main() -> Result<(), Box<dyn Error>> {
     let pixels = vec!(Pixel::default(); IMATGE_WIDTH * IMATGE_HEIGHT);
     let mut img = Imatge::new(IMATGE_WIDTH, IMATGE_HEIGHT, pixels);
-
-    guardar_pixels(img.clone());
 
     println!("Calculant...");
 
@@ -61,9 +59,8 @@ fn rebre_pixels_i_escriure_a_disk(receiver: Receiver<Pixel>) {
     writeln!(buffer, "255").unwrap();
 
     while (next < IMATGE_WIDTH * IMATGE_HEIGHT) { 
-        print!("Next: {next}");
-        if let Ok(pixel_rebut) = receiver.recv() { // Err means sender hung up, we don't care
-            println!("; ok: true");
+        if next % 1000 == 0 {println!("Next: {next}, b_heap: {}", b_heap.len());}
+        if let Ok(pixel_rebut) = receiver.recv() { // Err means sender hung up, m'és igual
             let index = pixel_rebut.index;
             if next != index {
                 b_heap.push(Reverse(pixel_rebut));
@@ -81,9 +78,6 @@ fn rebre_pixels_i_escriure_a_disk(receiver: Receiver<Pixel>) {
             next += 1;
         }
     }
-
-    dbg!(b_heap.len());
-    dbg!(b_heap.peek());
 }
 
 fn mandel_equation(x: usize, y: usize) -> bool {
