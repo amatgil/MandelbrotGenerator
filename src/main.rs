@@ -17,9 +17,11 @@ const LENGTH_THRESHOLD: usize = 10000000;
 
 const SCALING_FACTOR: f64 = (IMATGE_WIDTH / 2) as f64;
 
-const COLOR_DINS: Color = Color::new(255, 0, 0);
-const COLOR_FORA: Color = Color::new(0, 255, 0);
+//const COLOR_DINS: Color = Color::new(255, 0, 0);
+//const COLOR_FORA: Color = Color::new(0, 255, 0);
 const COLOR_NO_CALCULAT: Color = Color::new(255, 255, 255);
+const COLOR_DINS: Color = Color::new(184, 192, 224);
+const COLOR_FORA: Color = Color::new(54, 58, 79);
 
 fn main() -> Result<(), Box<dyn Error>> {
     let pixels = vec!(Pixel::default(); IMATGE_WIDTH * IMATGE_HEIGHT);
