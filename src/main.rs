@@ -7,10 +7,12 @@ use std::io::Write;
 use rayon::prelude::*;
 use structs::{Imatge, Color, Complex};
 
+use indicatif::{ProgressBar, ProgressStyle};
+
 use crate::{structs::Pixel, utils::guardar_pixels};
 
 const IMATGE_WIDTH: usize = 10000;
-const IMATGE_HEIGHT: usize = IMATGE_WIDTH;
+const IMATGE_HEIGHT: usize = 8000;
 
 const ITERACIONS_MAX: usize = 50;
 const LENGTH_THRESHOLD: usize = 10000000;
@@ -60,8 +62,12 @@ fn rebre_pixels_i_escriure_a_disk(receiver: Receiver<Pixel>) {
     writeln!(buffer, "{} {}", IMATGE_WIDTH, IMATGE_HEIGHT).unwrap();
     writeln!(buffer, "255").unwrap();
 
-    while (next < IMATGE_WIDTH * IMATGE_HEIGHT) { 
-        if next % 1000 == 0 {println!("Next: {next}, b_heap: {}", b_heap.len());}
+    let progres = ProgressBar::with_style( // TODO: Make pretty
+        ProgressBar::new((IMATGE_WIDTH * IMATGE_HEIGHT) as u64),
+        ProgressStyle::default_bar()
+    );
+
+    while next < IMATGE_WIDTH * IMATGE_HEIGHT { 
         if let Ok(pixel_rebut) = receiver.recv() { // Err means sender hung up, m'és igual
             let index = pixel_rebut.index;
             if next != index {
@@ -69,7 +75,7 @@ fn rebre_pixels_i_escriure_a_disk(receiver: Receiver<Pixel>) {
                 continue;
             }
             writeln!(buffer, "{}", pixel_rebut).unwrap();
-            next += 1;
+            next += 1; progres.inc(1);
         }
 
         while let Some(Reverse(peek)) = b_heap.peek() {
@@ -77,7 +83,7 @@ fn rebre_pixels_i_escriure_a_disk(receiver: Receiver<Pixel>) {
 
             writeln!(buffer, "{}", peek).unwrap();
             b_heap.pop();
-            next += 1;
+            next += 1; progres.inc(1);
         }
     }
 }
